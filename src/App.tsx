@@ -19,7 +19,7 @@ import {
   Sparkles,
   LucideIcon
 } from 'lucide-react';
-import { auth, db, signIn, logOut, handleFirestoreError, OperationType } from './lib/firebase.ts';
+import { auth, db, signIn, logOut, handleFirestoreError, OperationType, signInGuest } from './lib/firebase.ts';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { 
   collection, 
@@ -31,7 +31,8 @@ import {
   doc, 
   serverTimestamp,
   limit,
-  orderBy
+  orderBy,
+  setDoc
 } from 'firebase/firestore';
 import { cn } from './lib/utils.ts';
 import { SRSCard, calculateNextReview } from './lib/srs.ts';
@@ -60,8 +61,20 @@ export default function App() {
   const [showNotification, setShowNotification] = useState(false);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      if (u) {
+        // Ensure user document exists
+        try {
+          await setDoc(doc(db, 'users', u.uid), {
+            email: u.email || 'anonymous',
+            displayName: u.displayName || 'Guest',
+            createdAt: serverTimestamp()
+          }, { merge: true });
+        } catch (e) {
+          console.error("User doc sync failed:", e);
+        }
+      }
       setLoading(false);
     });
     return unsub;
@@ -80,7 +93,7 @@ export default function App() {
         nextReview: d.data().nextReview?.toDate?.() || new Date(d.data().nextReview)
       } as unknown as SRSCard));
       setCards(cardData);
-    });
+    }, (err) => handleFirestoreError(err, OperationType.LIST, 'cards'));
 
     // Fetch Daily Test
     const testsQuery = query(
@@ -96,7 +109,7 @@ export default function App() {
       } else {
         setDailyTest(null);
       }
-    });
+    }, (err) => handleFirestoreError(err, OperationType.LIST, 'tests'));
 
     return () => {
       unsubCards();
@@ -148,8 +161,8 @@ export default function App() {
 
   if (!user) return (
     <div className="flex h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-emerald-50 to-teal-100 font-sans">
-      <div className="max-w-xs text-center space-y-6">
-        <div className="bg-white p-6 rounded-3xl shadow-xl space-y-4">
+      <div className="max-w-xs w-full text-center space-y-6">
+        <div className="bg-white p-8 rounded-3xl shadow-xl space-y-4">
           <div className="mx-auto w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center">
             <Brain className="w-10 h-10 text-emerald-600" />
           </div>
@@ -158,13 +171,24 @@ export default function App() {
             Prepare for your IELTS exam with a smart Spaced Repetition System. AI-powered flashcards and daily practice tests.
           </p>
         </div>
-        <button 
-          onClick={signIn}
-          className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold shadow-lg hover:bg-emerald-700 transition flex items-center justify-center gap-2"
-        >
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" className="w-5 h-5 bg-white rounded p-0.5" alt="Google" />
-          Sign in with Google
-        </button>
+        <div className="space-y-3">
+          <button 
+            onClick={signIn}
+            className="w-full bg-white text-gray-700 py-4 rounded-2xl font-semibold shadow-md hover:shadow-lg transition flex items-center justify-center gap-3 border border-gray-100"
+          >
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" className="w-5 h-5" alt="Google" />
+            Sign in with Google
+          </button>
+          <button 
+            onClick={signInGuest}
+            className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold shadow-lg hover:bg-emerald-700 transition active:scale-95"
+          >
+            Continue as Guest
+          </button>
+        </div>
+        <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">
+          Guest mode saves progress in this browser
+        </p>
       </div>
     </div>
   );
@@ -174,8 +198,12 @@ export default function App() {
       {/* --- Top Bar --- */}
       <header className="p-6 flex items-center justify-between pb-2">
         <div>
-          <h2 className="text-2xl font-bold">Hello, {user.displayName?.split(' ')[0]}</h2>
-          <p className="text-gray-500 text-xs font-medium uppercase tracking-widest pt-1">Ready for IELTS?</p>
+          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
+            Hi, {user.isAnonymous ? 'Student' : user.displayName?.split(' ')[0]}
+          </h2>
+          <p className="text-gray-500 text-xs font-medium uppercase tracking-widest pt-1 flex items-center gap-1">
+            <Award size={12} className="text-emerald-500" /> IELTS Explorer
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={() => setShowNotification(!showNotification)} className="p-2 bg-white rounded-full shadow-sm relative">
@@ -184,8 +212,8 @@ export default function App() {
               <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
             )}
           </button>
-          <button onClick={() => setCurrentView('settings')} className="overflow-hidden w-10 h-10 rounded-full border-2 border-white shadow-sm bg-gray-200">
-            {user.photoURL && <img src={user.photoURL} alt="avatar" />}
+          <button onClick={() => setCurrentView('settings')} className="overflow-hidden w-10 h-10 rounded-full border-2 border-white shadow-sm bg-emerald-100 flex items-center justify-center">
+            {user.photoURL ? <img src={user.photoURL} alt="avatar" /> : <UserIcon className="text-emerald-600" size={20} />}
           </button>
         </div>
       </header>

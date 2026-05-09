@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, signInAnonymously } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -46,4 +46,5 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 }
 
 export const signIn = () => signInWithPopup(auth, googleProvider);
+export const signInGuest = () => signInAnonymously(auth);
 export const logOut = () => signOut(auth);
