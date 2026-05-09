@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and study settings",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "dailyGoal": { "type": "integer", "description": "Number of new cards per day" },
+        "lastPracticeDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "Card": {
+      "title": "Flashcard",
+      "description": "An individual SRS flashcard",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "front": { "type": "string", "description": "Front of the card (word/phrase)" },
+        "back": { "type": "string", "description": "Back of the card (definition/example)" },
+        "category": { "type": "string", "description": "e.g., Vocabulary, Grammar, Collocations" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "nextReview": { "type": "string", "format": "date-time" },
+        "interval": { "type": "integer", "description": "Current interval in days" },
+        "ease": { "type": "number", "description": "Ease factor (SM-2)" },
+        "repetitions": { "type": "integer" },
+        "status": { "type": "string", "enum": ["learning", "review", "graduated", "new"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "front", "back", "nextReview", "status"]
+    },
+    "PracticeTest": {
+      "title": "Practice Test",
+      "description": "Daily practice questions for reading/writing/listening",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["reading", "listening", "writing"] },
+        "question": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "correctAnswer": { "type": "string" },
+        "explanation": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed"] },
+        "score": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "question", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users": { "schema": "User", "description": "Store user profiles" },
+    "cards": { "schema": "Card", "description": "Flashcards for Spaced Repetition" },
+    "tests": { "schema": "PracticeTest", "description": "Daily practice tests" }
+  }
+}

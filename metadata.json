@@ -1,0 +1,6 @@
+{
+  "name": "IELTS Ace",
+  "description": "An Anki-style SRS flashcard and practice app designed to help you ace the IELTS exam with daily reminders and smart vocabulary tracking.",
+  "requestFramePermissions": ["notifications"],
+  "majorCapabilities": []
+}

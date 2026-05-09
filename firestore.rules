@@ -1,0 +1,58 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read, get: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && request.resource.data.keys().hasAll(['email', 'createdAt'])
+        && request.resource.data.email is string
+        && request.resource.data.createdAt == request.time;
+      allow update: if isOwner(userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasAny(['displayName', 'photoURL', 'dailyGoal', 'lastPracticeDate']);
+    }
+
+    // Cards Collection
+    match /cards/{cardId} {
+      function isValidCard(data) {
+        return data.userId == request.auth.uid
+          && data.front is string && data.front.size() <= 500
+          && data.back is string && data.back.size() <= 2000
+          && data.ease is number && data.ease >= 1.3
+          && data.interval is int && data.interval >= 0
+          && data.status in ['new', 'learning', 'review', 'graduated'];
+      }
+
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidCard(request.resource.data) && request.resource.data.createdAt == request.time;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && isValidCard(request.resource.data);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Tests Collection
+    match /tests/{testId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && request.resource.data.createdAt == request.time;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
